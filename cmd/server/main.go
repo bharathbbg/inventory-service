@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bharathbbg/inventory-service/internal/api/grpc"
 	"github.com/bharathbbg/inventory-service/internal/api/rest"
 	"github.com/bharathbbg/inventory-service/internal/config"
 	"github.com/bharathbbg/inventory-service/internal/repository"
 	"github.com/bharathbbg/inventory-service/internal/service"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -35,13 +35,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize cache: %v", err)
 	}
-	defer cache.Close()
-
 	// Initialize service
 	svc := service.NewInventoryService(repo, cache)
 
-	// Initialize gRPC server
-	grpcServer := grpc.NewServer(svc)
+	// create gRPC server
+	grpcServer := grpc.NewServer()
 	go func() {
 		lis, err := net.Listen("tcp", cfg.GRPCAddr)
 		if err != nil {
@@ -53,12 +51,14 @@ func main() {
 		}
 	}()
 
-	// Initialize REST server
+	// Create REST router and HTTP server
 	router := rest.NewRouter(svc)
 	server := &http.Server{
 		Addr:    cfg.HTTPAddr,
 		Handler: router,
 	}
+
+	// Start HTTP server
 
 	// Start HTTP server
 	go func() {
